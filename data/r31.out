@@ -1,0 +1,15 @@
+number_of_sinks 3
+
+sink 8 2.7 2.1
+sink 14 -2.9 -1.6
+sink 7 -1.5 -3.8
+
+points 103 -1.5 -1.6
+points 1002 2.7 -1.6
+
+edge 14 103
+edge 7 103
+edge 8 1002
+edge 103 1002
+
+Path length = 11.5

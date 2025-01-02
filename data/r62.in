@@ -1,0 +1,8 @@
+number_of_sinks 6
+
+sink 6 1.8 -1.8
+sink 26 -1.6 2.4
+sink 14 1.4 -1.9
+sink 15 -1.7 1.9
+sink 0 -2.5 -4
+sink 27 -1.7 -3.7
