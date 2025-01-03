@@ -18,30 +18,6 @@ The program takes an input file containing Cartesian coordinates of points and o
 - Supports modular and multithreaded code design for efficiency.
 - Fully documented and follows good coding practices.
 
----
-
-## **File Structure**
-The project structure is as follows:
-
-project/
-│
-├── src/                     # Source files
-│   ├── steiner.cpp          # Main program file
-│   ├── utils.h              # Utility functions and definitions (if any)
-│   └── Makefile             # Build instructions
-│
-├── data/                    # Input and output files
-│   ├── example.in           # Sample input file
-│   └── example.out          # Corresponding output file
-│
-├── README.md                # Project documentation
-├── pseudocode/              # Folder for pseudocode drafts
-│   ├── initial_pseudocode.md
-│
-└── docs/                    # Additional resources or references
-
----
-
 ## **Input File Format**
 The input file is a text file (e.g., `example.in`) with the following format:
 1. The first line contains the number of terminal points (**N**).
