@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <sstream>
 #include <set>
+#include <algorithm> // For std::sort
 
 using namespace std;
 
@@ -24,13 +25,51 @@ struct Edge {
     Edge(int u, int v, double weight) : u(u), v(v), weight(weight) {}
 };
 
+// Comparator for sorting edges by weight
+bool compareEdgeWeight(const Edge &a, const Edge &b) {
+    return a.weight < b.weight;
+}
+
+// Union-Find (Disjoint Set) for Kruskal's Algorithm
+class UnionFind {
+    vector<int> parent, rank;
+
+public:
+    UnionFind(int n) {
+        parent.resize(n);
+        rank.resize(n, 0);
+        for (int i = 0; i < n; ++i)
+            parent[i] = i;
+    }
+
+    int find(int u) {
+        if (parent[u] != u)
+            parent[u] = find(parent[u]);
+        return parent[u];
+    }
+
+    bool unite(int u, int v) {
+        int rootU = find(u);
+        int rootV = find(v);
+        if (rootU != rootV) {
+            if (rank[rootU] > rank[rootV]) {
+                parent[rootV] = rootU;
+            } else if (rank[rootU] < rank[rootV]) {
+                parent[rootU] = rootV;
+            } else {
+                parent[rootV] = rootU;
+                rank[rootU]++;
+            }
+            return true;
+        }
+        return false;
+    }
+};
+
 // Function to calculate Manhattan Distance
 double manhattanDistance(const Point &a, const Point &b) {
     return abs(a.x - b.x) + abs(a.y - b.y);
 }
-
-
-// Add vector of point(graph structure)
 
 // Function to generate Hanan grid points
 vector<Point> generateHananGrid(const vector<Point> &sinks) {
@@ -51,29 +90,73 @@ vector<Point> generateHananGrid(const vector<Point> &sinks) {
 }
 
 // Function to create edges between points
-vector<Edge> createEdges(const vector<Point> &points) {
+vector<Edge> createEdges(const vector<Point> &points, ofstream &out) {
     vector<Edge> edges;
     for (size_t i = 0; i < points.size(); ++i) {
         for (size_t j = i + 1; j < points.size(); ++j) {
             double weight = manhattanDistance(points[i], points[j]);
             edges.emplace_back(points[i].id, points[j].id, weight);
+
+            // Output edge information to file
+            out << "Edge (" << points[i].id << ", " << points[j].id << ") weight: " << weight << endl;
         }
     }
     return edges;
 }
 
-// Function to find the total path length of edges
-double calculatePathLength(const vector<Edge> &edges) {
+// Function to compute the Minimum Spanning Tree using Kruskal's Algorithm
+vector<Edge> computeMST(int n, vector<Edge> &edges, ofstream &out) {
+    sort(edges.begin(), edges.end(), compareEdgeWeight);
+    UnionFind uf(n);
+
+    vector<Edge> mst;
+    double totalWeight = 0.0;
+
+    // Output all edges before MST computation
+    out << "Edges before MST computation:" << endl;
+    for (const auto &edge : edges) {
+        out << "(" << edge.u << ", " << edge.v << ") weight: " << edge.weight << endl;
+    }
+
+    for (const auto &edge : edges) {
+        if (uf.unite(edge.u, edge.v)) {
+            mst.push_back(edge);
+            totalWeight += edge.weight;
+
+            // Output MST edge being added
+            out << "Adding edge to MST: (" << edge.u << ", " << edge.v << ") weight: " << edge.weight << endl;
+        }
+
+        // Stop when we've added (n-1) edges
+        if (mst.size() == n - 1)
+            break;
+    }
+
+    out << "Total MST Weight: " << totalWeight << endl;
+    return mst;
+}
+
+// Function to calculate the total weight of edges in the MST
+double calculatePathLength(const vector<Edge> &edges, ofstream &out) {
     double total = 0.0;
     for (const auto &edge : edges) {
         total += edge.weight;
     }
+
+    // Output total path length
+    out << "Total Path Length: " << total << endl;
+
     return total;
 }
 
 // Function to write output to a file
-void writeOutput(const string &outputFile, const vector<Point> &sinks, const vector<Point> &hananGrid, const vector<Edge> &edges, double pathLength) {
+void writeOutput(const string &outputFile, const vector<Point> &sinks, const vector<Point> &hananGrid, const vector<Edge> &mst, double pathLength) {
     ofstream out(outputFile);
+
+    if (!out) {
+        cerr << "Error: Unable to open output file " << outputFile << endl;
+        return;
+    }
 
     // Write sinks
     out << "number_of_sinks " << sinks.size() << "\n\n";
@@ -81,15 +164,22 @@ void writeOutput(const string &outputFile, const vector<Point> &sinks, const vec
         out << "sink " << sink.id << " " << fixed << setprecision(1) << sink.x << " " << sink.y << "\n";
     }
 
-    // Write Hanan grid points
+    // Write Steiner points used in the MST
+    set<int> usedPoints;
+    for (const auto &edge : mst) {
+        usedPoints.insert(edge.u);
+        usedPoints.insert(edge.v);
+    }
     out << "\n";
     for (const auto &point : hananGrid) {
-        out << "points " << point.id << " " << fixed << setprecision(1) << point.x << " " << point.y << "\n";
+        if (usedPoints.count(point.id)) {
+            out << "point " << point.id << " " << fixed << setprecision(1) << point.x << " " << point.y << "\n";
+        }
     }
 
     // Write edges
     out << "\n";
-    for (const auto &edge : edges) {
+    for (const auto &edge : mst) {
         out << "edge " << edge.u << " " << edge.v << "\n";
     }
 
@@ -103,7 +193,7 @@ void writeOutput(const string &outputFile, const vector<Point> &sinks, const vec
 // Main function
 int main(int argc, char* argv[]) {
     if (argc < 3) {
-        cout << "Usage: " << argv[0] << " <input_file> <output_file>" << endl;
+        cerr << "Usage: " << argv[0] << " <input_file> <output_file>" << endl;
         return 1;
     }
 
@@ -112,11 +202,11 @@ int main(int argc, char* argv[]) {
 
     ifstream in(inputFile);
     if (!in) {
-        cerr << "Error: Unable to open input file." << endl;
+        cerr << "Error: Unable to open input file " << inputFile << endl;
         return 1;
     }
 
-    // Read input file
+    // Read sinks from input file
     vector<Point> sinks;
     string line;
     while (getline(in, line)) {
@@ -126,11 +216,22 @@ int main(int argc, char* argv[]) {
         if (type == "sink") {
             int id;
             double x, y;
-            ss >> id >> x >> y;
+            if (!(ss >> id >> x >> y)) {
+                cerr << "Error: Invalid sink format in input file." << endl;
+                return 1;
+            }
             sinks.emplace_back(id, x, y);
         }
     }
     in.close();
+
+    if (sinks.empty()) {
+        cerr << "Error: No sinks found in input file." << endl;
+        return 1;
+    }
+
+    // Open output file for writing debug information
+    ofstream out(outputFile);
 
     // Generate Hanan grid points
     vector<Point> hananGrid = generateHananGrid(sinks);
@@ -139,18 +240,17 @@ int main(int argc, char* argv[]) {
     vector<Point> allPoints = sinks;
     allPoints.insert(allPoints.end(), hananGrid.begin(), hananGrid.end());
 
-    // Create edges
-    vector<Edge> edges = createEdges(allPoints);
+    // Create edges and output debug info
+    vector<Edge> edges = createEdges(allPoints, out);
 
-    // Select some edges for visualization (minimal spanning set or heuristic)
-    // For now, just a placeholder subset of edges
-    vector<Edge> selectedEdges = edges; // Use all edges for demonstration
+    // Compute MST and output debug info
+    vector<Edge> mst = computeMST(allPoints.size(), edges, out);
 
-    // Calculate total path length
-    double pathLength = calculatePathLength(selectedEdges);
+    // Calculate total path length and output debug info
+    double pathLength = calculatePathLength(mst, out);
 
-    // Write to output file
-    writeOutput(outputFile, sinks, hananGrid, selectedEdges, pathLength);
+    // Write final output to file
+    writeOutput(outputFile, sinks, hananGrid, mst, pathLength);
 
     return 0;
 }
