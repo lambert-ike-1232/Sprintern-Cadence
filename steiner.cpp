@@ -30,7 +30,7 @@ double manhattanDistance(const Point &a, const Point &b) {
 }
 
 
-// Add vector of point( graph structure)
+// Add vector of point(graph structure)
 
 // Function to generate Hanan grid points
 vector<Point> generateHananGrid(const vector<Point> &sinks) {
