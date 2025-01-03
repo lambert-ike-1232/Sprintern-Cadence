@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 
-# Function to read the input file and parse sinks
+# Function to read the input file and parse sinks 
 def read_input(file_path):
     """
     Reads the input file and parses sink points.
