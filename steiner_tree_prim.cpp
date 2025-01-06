@@ -301,48 +301,58 @@ public:
                           << ", improvement=" << bestImprovement << "\n";
 
                 baseLength = newBaseLen; // update baseline
+                // Recompute Hanan grid with newly added point
+                hanan = getHananGridPoints(points);
             }
         }
 
         // 4) Attempt removal: if removing a Steiner doesn’t worsen the MST, remove it
-        std::cout << "\n[DEBUG] Checking if we can remove any Steiner points...\n";
-        auto it = points.begin();
-        while (it != points.end()) {
-            if (!it->sink) {
-                // Temporarily remove this Steiner point
-                std::vector<Point> tempPoints = points;
-                tempPoints.erase(std::remove(tempPoints.begin(),
-                                             tempPoints.end(), *it),
-                                 tempPoints.end());
+        // std::cout << "\n[DEBUG] Checking if we can remove any Steiner points...\n";
+        // auto it = points.begin();
+        // while (it != points.end()) {
+        //     if (!it->sink) {
+        //         // Temporarily remove this Steiner point
+        //         std::vector<Point> tempPoints = points;
+        //         tempPoints.erase(std::remove(tempPoints.begin(),
+        //                                      tempPoints.end(), *it),
+        //                          tempPoints.end());
 
-                double newLen;
-                auto newMST = computePrimMST(tempPoints, &newLen);
+        //         double newLen;
+        //         auto newMST = computePrimMST(tempPoints, &newLen);
 
-                double curLen;
-                auto curMST = computePrimMST(points, &curLen);
+        //         double curLen;
+        //         auto curMST = computePrimMST(points, &curLen);
 
-                std::cout << "   [DEBUG] Removal check => Steiner ID=" << it->id 
-                          << ": MST if removed=" << newLen
-                          << ", current MST=" << curLen << "\n";
+        //         std::cout << "   [DEBUG] Removal check => Steiner ID=" << it->id 
+        //                   << ": MST if removed=" << newLen
+        //                   << ", current MST=" << curLen << "\n";
 
-                if (newLen <= curLen) {
-                    std::cout << "   [DEBUG] >>> Removing Steiner ID=" 
-                              << it->id << "\n";
-                    it = points.erase(it);
-                    numberOfPoints--;
-                } else {
-                    ++it;
-                }
-            } else {
-                ++it;
-            }
-        }
+        //         if (newLen < curLen) {
+        //             std::cout << "   [DEBUG] >>> Removing Steiner ID=" 
+        //                       << it->id << "\n";
+        //             it = points.erase(it);
+        //             numberOfPoints--;
+        //         } else {
+        //             ++it;
+        //         }
+        //     } else {
+        //         ++it;
+        //     }
+        // }
 
         // Finally, computePrimMST for the final set and store that in `edges`
         double finalLen;
         this->edges = computePrimMST(points, &finalLen);
         std::cout << "[DEBUG] Final MST length after add/remove = "
                   << finalLen << "\n\n";
+    }
+
+    // Helper to find a point by ID
+    const Point* findPointByID(int id) const {
+        for (auto &p : points) {
+            if (p.id == id) return &p;
+        }
+        return nullptr;
     }
 
     // =============== Output File ===============
@@ -375,7 +385,21 @@ public:
 
         // Print MST edges
         for (auto& e : mstEdges) {
-            ofs << "edge " << e.node1 << " " << e.node2 << "\n";
+            const Point* p1 = findPointByID(e.node1);
+            const Point* p2 = findPointByID(e.node2);
+            if (!p1 || !p2) continue;
+            // If they share x or y, it's already rectilinear
+            if (std::fabs(p1->x - p2->x) < 1e-9 ||
+                std::fabs(p1->y - p2->y) < 1e-9) {
+                ofs << "edge " << e.node1 << " " << e.node2 << "\n";
+            } else {
+                // Make an intermediate Steiner point at (p1->x, p2->y)
+                // (Or choose (p2->x, p1->y) – either is fine)
+                int midID = 20000 + e.node1; // any unique ID scheme
+                ofs << "point " << midID << " " << p1->x << " " << p2->y << "\n";
+                ofs << "edge " << e.node1 << " " << midID << "\n";
+                ofs << "edge " << midID   << " " << e.node2 << "\n";
+            }
         }
         ofs << "\n";
 
@@ -397,12 +421,49 @@ public:
 };
 
 
+void reorderOutputFile(const std::string &filename) {
+    std::ifstream in(filename);
+    if (!in) return;
+
+    std::string line, numberOfSinks, pathLength;
+    std::vector<std::string> sinks, points, edges;
+
+    while (std::getline(in, line)) {
+        if (line.rfind("number_of_sinks", 0) == 0) {
+            numberOfSinks = line;
+        } else if (line.rfind("sink", 0) == 0) {
+            sinks.push_back(line);
+        } else if (line.rfind("point", 0) == 0) {
+            points.push_back(line);
+        } else if (line.rfind("edge", 0) == 0) {
+            edges.push_back(line);
+        } else if (line.rfind("Path length", 0) == 0) {
+            pathLength = line;
+        }
+    }
+    in.close();
+
+    std::ofstream out(filename);
+    if (!out) return;
+
+    out << numberOfSinks << "\n\n";
+    for (auto &s : sinks) out << s << "\n";
+    out << "\n";
+    for (auto &p : points) out << p << "\n";
+    out << "\n";
+    for (auto &e : edges) out << e << "\n";
+    out << "\n";
+    out << pathLength << std::endl;
+}
+
+
+
 // ================= MAIN =================
 
 int main() {
     try {
         // 1) Initialize
-        SteinerTree steiner("data/r53.in");
+        SteinerTree steiner("data/r62.in");
 
         // 2) Print sinks that we read in
         steiner.printSinks();
@@ -436,6 +497,8 @@ int main() {
         // 6) Write to output file
         steiner.writeOutputToFile("steiner_tree_output.txt", finalEdges);
         std::cout << "Output written to file: output/steiner_tree_output.txt\n";
+
+        reorderOutputFile("steiner_tree_output.txt");
 
         return 0;
     }
