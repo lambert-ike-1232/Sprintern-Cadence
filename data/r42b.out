@@ -1,0 +1,21 @@
+number_of_sinks 4
+
+sink 3 1.3 1
+sink 19 1 -2.4
+sink 4 1 1.7
+sink 14 2.2 1.9
+
+number_of_blockages 2
+blockage 202 1.8 -0.6 2.0 2.0 
+blockage 208 0.0 -1.6 2.1 -0.8
+
+points 101 1 1
+points 1002 1 1.9
+
+edge 4 1002
+edge 3 101
+edge 4 101
+edge 14 1002
+edge 19 101
+
+Path length = 5.8
