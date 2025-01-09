@@ -323,7 +323,7 @@ public:
     bool isBlocked(Point pt){
         bool blocked = false;
         for (const auto& block: blockages){
-            if (block.x1 <= pt.x && pt.x <= block.x2 && block.y1 <= pt.y && pt.y <= block.y2){
+            if (block.x1 < pt.x && pt.x < block.x2 && block.y1 < pt.y && pt.y < block.y2){
                  blocked = true;
             }
         }
@@ -579,10 +579,8 @@ public:
                 p_option2.x = p2->x;
                 p_option2.y = p1->y;
                 Point intermediatePt;
-                if (isBlocked(p_option1) && isBlocked(p_option2)){
-                    
-                }
-                else if (isBlocked(p_option1)){
+            
+                if (isBlocked(p_option1)){
                     intermediatePt = {midID, p2->x, p1->y};
                 }
                 else{
