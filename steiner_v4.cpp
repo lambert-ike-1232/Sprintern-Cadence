@@ -256,7 +256,7 @@ public:
         double max_X = *max_X_it; 
         double max_Y = *max_Y_it;
 
-        // Add blockage points for extended hanan grid points
+        // Extended hanan grid points
         std::set<double> xVals_blockage;
         std::set<double> yVals_blockage;
         for (const auto& b: blockages){
@@ -303,6 +303,9 @@ public:
             }
         }
 
+        // Filter out blocked points from the hanan grid
+        candidates = getUnblockedPoints(candidates);
+
         // Debug Print: Show Hanan grid points
         std::cout << "\n[DEBUG] Hanan Grid Points Generated:\n";
         for (auto& c : candidates) {
@@ -311,6 +314,7 @@ public:
         }
         std::cout << "[DEBUG] Total candidate Hanan points: " 
                   << candidates.size() << "\n\n";
+
 
         return candidates;
     }
@@ -387,14 +391,14 @@ public:
 
     // Function that checks if an edge is crossing any blockages
     bool isEdgeBlocked(Edge edge, std::vector<Point> tempPoints){
-        std::cout << "top of helper\n";
+        std::cout << "top of isEdgeBlocked()\n";
         const Point* node1_ptr = findPointByID_list(edge.node1, tempPoints);
         const Point* node2_ptr = findPointByID_list(edge.node2, tempPoints);
-        std::cout << "Points read\n";
-        std::cout << "Any null : " << (edge.node1) << "\n";
+        // std::cout << "Points read\n";
+        // std::cout << "Any null : " << (edge.node1) << "\n";
         //Make exception for diagonal edges
         if(node1_ptr->x != node2_ptr->x && node1_ptr->y != node2_ptr->y){
-            std::cout << "getsHere" << edge.weight << "\n";
+            std::cout << "Diagonal exception" << edge.weight << "\n";
             return false;
         }
         
@@ -568,12 +572,29 @@ public:
             } else {
                 // Add intermediate Steiner point
                 int midID = 20000 + e.node1; // any unique ID scheme
-                Point intermediatePt = {midID, p1->x, p2->y};
+                Point p_option1;
+                p_option1.x = p1->x;
+                p_option1.y = p2->y;
+                Point p_option2;
+                p_option2.x = p2->x;
+                p_option2.y = p1->y;
+                Point intermediatePt;
+                if (isBlocked(p_option1) && isBlocked(p_option2)){
+                    
+                }
+                else if (isBlocked(p_option1)){
+                    intermediatePt = {midID, p2->x, p1->y};
+                }
+                else{
+                    intermediatePt = {midID, p1->x, p2->y};
+                }
                 points.push_back(intermediatePt);
 
                 // Create two new edges
-                updatedEdges.push_back({e.node1, midID, mhDistance(*findPointByID(e.node1), intermediatePt)});
-                updatedEdges.push_back({midID, e.node2, mhDistance(intermediatePt, *findPointByID(e.node2))});
+                Edge newEdge1 = {e.node1, midID, mhDistance(*findPointByID(e.node1), intermediatePt)};
+                Edge newEdge2 = {midID, e.node2, mhDistance(intermediatePt, *findPointByID(e.node2))};
+                updatedEdges.push_back(newEdge1);
+                updatedEdges.push_back(newEdge2);
             }
         }
         // Replace edges with updatedEdges
@@ -712,7 +733,7 @@ void reorderOutputFile(const std::string &filename) {
 int main() {
     try {
         // 1) Initialize
-        SteinerTree steiner("data/r31.in");
+        SteinerTree steiner("data_b/r31b.in");
 
         // 2) Print sinks that we read in
         steiner.printSinks();
