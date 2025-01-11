@@ -237,6 +237,7 @@ public:
         for (auto& c : candidates) {
             std::cout << "   ID=" << c.id
                       << "  (x=" << c.x << ", y=" << c.y << ")\n";
+
         }
         std::cout << "[DEBUG] Total candidate Hanan points: " 
                   << candidates.size() << "\n\n";
