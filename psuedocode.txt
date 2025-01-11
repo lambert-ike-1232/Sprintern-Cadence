@@ -1,94 +1,3 @@
-# Sprintern-Cadence
-
-This repository is for cadence sprinterns.
-
-## Steiner Tree Algorithm Implementation
-
-### **Overview**
-This project implements a Steiner Tree algorithm to minimize the total wirelength connecting a set of input points using Manhattan (rectilinear) distances. The goal is to compute the optimal connections for a given set of terminal points, possibly adding Steiner points, while following the constraints of the rectilinear geometry.
-
-The program takes an input file containing Cartesian coordinates of points and outputs a file containing the resulting Steiner tree, including Steiner points and edges.
-
----
-
-### **Features**
-- Implements the **Hanan grid** to identify potential Steiner points.
-- Utilizes **Kruskal’s MST algorithm** to generate a Minimum Spanning Tree (MST).
-- Includes a **1-Steiner heuristic** to further optimize the rectilinear MST.
-- Supports modular and multithreaded code design for efficiency.
-- Fully documented and follows good coding practices.
-
-## **Input File Format**
-The input file is a text file (e.g., `example.in`) with the following format:
-1. The first line contains the number of terminal points (**N**).
-2. Each of the next **N** lines contains the **x** and **y** coordinates of a point.
-
-### Example:
-
-4
-0 0
-10 0
-0 10
-10 10
-
----
-
-## **Output File Format**
-The output file (e.g., `example.out`) includes:
-1. A list of all points (terminal and Steiner points).
-2. A list of edges in the Steiner tree and their weights (Manhattan distances).
-
-### Example:
-
-Points:
-* 0 0
-* 10 0
-* 0 10
-* 10 10
-* 5 5
-
-Edges:
-* (0, 0) -> (5, 5) : 10
-* (10, 0) -> (5, 5) : 10
-* (0, 10) -> (5, 5) : 10
-* (10, 10) -> (5, 5) : 10
-
----
-
-## **Setup Instructions**
-
-### **Prerequisites**
-- A C++ compiler (e.g., `g++` or `clang`).
-- A terminal or command prompt.
-- (Optional) A text editor like VS Code for editing and testing the code.
-
-### **Building the Code**
-1. Navigate to the project directory:
-   ```bash
-   cd project/src
-
-	2.	Use the provided Makefile to build the project:
-
-make
-
-This will compile the steiner.cpp file and generate an executable called steiner.
-
-Running the Program
-	1.	Run the program with an input file and specify an output file:
-
-./steiner ../data/example.in ../data/example.out
-
-	•	Input File: Contains terminal points in the format described above.
-	•	Output File: The program will generate this file with the Steiner tree details.
-
-	2.	View the generated output file:
-
-cat ../data/example.out
-
-Implementation Plan
-
-Pseudocode
-
 **SteinerTree Algorithm**
 
 **Data Structures:**
@@ -258,11 +167,12 @@ Pseudocode
     - Writes the categorized lines back into the file in a specific order: `numberOfSinks`, `sinks`, `points`, `edges`, and `pathLength`.
     - Closes the output file.
 
----
+**Main Function:**
 
-## **Contributors**
-- Arohan Shrestha
-- Viswa Kotra
-- Lambert Ike
-- Julia High
-- Ishita Kumari
+    - Create a SteinerTree object `steiner`, passing the input file path.
+    - Print initial sink points using `steiner.printSinks()`.
+    - Compute and print the initial MST (only sinks) using `steiner.computePrimMST()`.
+    - Add Steiner points using `steiner.addSteinerPoints()`.
+    - Compute the final MST length and print final edges using `steiner.printEdges()`.
+    - Write the final output to a file using `steiner.writeOutputToFile()`.
+    - Reorder the output file for better readability using `reorderOutputFile()`.

@@ -18,14 +18,40 @@ struct Point {
 
 struct Edge {
     int node1, node2;   // The IDs of the endpoints
-    double weight;
+    double weight;      // The weight of the edge
 };
 
-bool operator==(const Point& p1, const Point& p2) {
-    return (p1.id == p2.id &&
-            p1.x  == p2.x  &&
-            p1.y  == p2.y  &&
-            p1.sink == p2.sink);
+struct Blockage {
+    double x1, y1, x2, y2;  // Coordinates of the blockage (assuming rectangular blockages)
+};
+
+// Function to check if a point is within a blockage
+bool isPointInBlockage(const Point& p, const std::vector<Blockage>& blockages) {
+    for (const auto& blockage : blockages) {
+        if (p.x >= blockage.x1 && p.x <= blockage.x2 && p.y >= blockage.y1 && p.y <= blockage.y2) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Function to check if a path intersects a blockage
+bool intersectsBlockage(const Point& p1, const Point& p2, const std::vector<Blockage>& blockages) {
+    for (const auto& blockage : blockages) {
+        if ((p1.x < blockage.x1 && p2.x > blockage.x2) || (p1.x > blockage.x2 && p2.x < blockage.x1) ||
+            (p1.y < blockage.y1 && p2.y > blockage.y2) || (p1.y > blockage.y2 && p2.y < blockage.y1)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Function to calculate Manhattan distance considering blockages
+double mhDistance(const Point& p1, const Point& p2, const std::vector<Blockage>& blockages) {
+    if (intersectsBlockage(p1, p2, blockages)) {
+        return std::numeric_limits<double>::infinity();  // Return a large value if blocked
+    }
+    return std::abs(p1.x - p2.x) + std::abs(p1.y - p2.y);
 }
 
 // =================== SteinerTree Class ===================
@@ -45,6 +71,19 @@ private:
 
     // Keep track of how many sinks we started with
     int originalSinkCount;
+
+    // Add blockages to the class
+    std::vector<Blockage> blockages;
+
+    // Function to find a Point by its ID
+    Point* findPointById(int id) {
+        for (auto& point : points) {
+            if (point.id == id) {
+                return &point;
+            }
+        }
+        return nullptr;
+    }
 
 public:
     // Constructor
@@ -84,6 +123,23 @@ public:
                 iss >> sink.id >> sink.x >> sink.y;
                 sink.sink = true;
                 points.push_back(sink);
+            }
+            else if (keyword == "blockage") {
+                Blockage blockage;
+                iss >> blockage.x1 >> blockage.y1 >> blockage.x2 >> blockage.y2;
+                blockages.push_back(blockage);
+            }
+            else if (keyword == "points") {
+                Point point;
+                iss >> point.id >> point.x >> point.y;
+                point.sink = false;
+                points.push_back(point);
+            }
+            else if (keyword == "edge") {
+                Edge edge;
+                iss >> edge.node1 >> edge.node2;
+                edge.weight = ::mhDistance(*findPointById(edge.node1), *findPointById(edge.node2), blockages);
+                edges.push_back(edge);
             }
         }
         inputFile.close();
@@ -237,7 +293,6 @@ public:
         for (auto& c : candidates) {
             std::cout << "   ID=" << c.id
                       << "  (x=" << c.x << ", y=" << c.y << ")\n";
-
         }
         std::cout << "[DEBUG] Total candidate Hanan points: " 
                   << candidates.size() << "\n\n";
@@ -419,6 +474,21 @@ public:
                       << " has Manhattan distance: " << e.weight << "\n";
         }
     }
+
+    // Method to filter points and edges based on blockages
+    void filterPointsAndEdges() {
+        // Filter out points that are within blockages
+        points.erase(std::remove_if(points.begin(), points.end(),
+            [this](const Point& p) { return isPointInBlockage(p, blockages); }), points.end());
+
+        // Filter out edges that intersect blockages
+        edges.erase(std::remove_if(edges.begin(), edges.end(),
+            [this](const Edge& e) {
+                Point* p1 = findPointById(e.node1);
+                Point* p2 = findPointById(e.node2);
+                return p1 && p2 && intersectsBlockage(*p1, *p2, blockages);
+            }), edges.end());
+    }
 };
 
 
@@ -464,7 +534,7 @@ void reorderOutputFile(const std::string &filename) {
 int main() {
     try {
         // 1) Initialize
-        SteinerTree steiner("data/r62.in");
+        SteinerTree steiner("data/r31b.out");
 
         // 2) Print sinks that we read in
         steiner.printSinks();
