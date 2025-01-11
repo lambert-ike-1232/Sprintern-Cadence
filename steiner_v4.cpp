@@ -250,12 +250,6 @@ public:
         auto xVals = getUniqueCoords(pts, true);
         auto yVals = getUniqueCoords(pts, false);
 
-        auto max_X_it = std::max_element(xVals.begin(), xVals.end());
-        auto max_Y_it = std::max_element(yVals.begin(), yVals.end());
-
-        double max_X = *max_X_it; 
-        double max_Y = *max_Y_it;
-
         // Extended hanan grid points
         std::set<double> xVals_blockage;
         std::set<double> yVals_blockage;
@@ -265,18 +259,14 @@ public:
             yVals_blockage.insert(b.y1);
             yVals_blockage.insert(b.y2);
         }
-
-        //Iterate through x and y sets and add the x and ys that are greater that max
+    
+        // //Iterate through x and y sets and add the x and y values
         for (const auto& x: xVals_blockage){
-            if (x > max_X){
-                xVals.push_back(x);
-            }
+            xVals.push_back(x);
         }
 
         for (const auto& y: yVals_blockage){
-            if (y > max_Y){
                 yVals.push_back(y);
-            }
         }
 
         std::vector<Point> candidates;
@@ -342,6 +332,79 @@ public:
         return unblockedPts;
     }
 
+// // Helper function to check the orientation of three points
+// int orientation(const Point& p, const Point& q, const Point& r) {
+//     double val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+//     if (val == 0) return 0; // Collinear
+//     return (val > 0) ? 1 : 2; // Clockwise or Counterclockwise
+// }
+
+// // Helper function to check if point q lies on segment pr
+// bool onSegment(const Point& p, const Point& q, const Point& r) {
+//     return (q.x <= std::max(p.x, r.x) && q.x >= std::min(p.x, r.x) &&
+//             q.y <= std::max(p.y, r.y) && q.y >= std::min(p.y, r.y));
+// }
+
+// // Function to check if two line segments (p1, q1) and (p2, q2) intersect
+// bool doIntersect(const Point& p1, const Point& q1, const Point& p2, const Point& q2) {
+//     int o1 = orientation(p1, q1, p2);
+//     int o2 = orientation(p1, q1, q2);
+//     int o3 = orientation(p2, q2, p1);
+//     int o4 = orientation(p2, q2, q1);
+
+//     // General case: segments intersect
+//     if (o1 != o2 && o3 != o4) return true;
+
+//     // Special cases: check if they are collinear and overlap
+//     if (o1 == 0 && onSegment(p1, p2, q1)) return true;
+//     if (o2 == 0 && onSegment(p1, q2, q1)) return true;
+//     if (o3 == 0 && onSegment(p2, p1, q2)) return true;
+//     if (o4 == 0 && onSegment(p2, q1, q2)) return true;
+
+//     return false;
+// }
+
+// // Function to check if an edge intersects with any blockage
+// bool isEdgeBlocked(const Edge& edge, const std::vector<Point>& points) {
+//     // Retrieve the endpoints of the edge
+//     const Point* node1 = nullptr;
+//     const Point* node2 = nullptr;
+//     for (const auto& point : points) {
+//         if (point.id == edge.node1) node1 = &point;
+//         if (point.id == edge.node2) node2 = &point;
+//     }
+
+//     // Ensure both points exist
+//     if (!node1 || !node2) return false;
+
+//     for (const auto& bloc : blockages) {
+//         Point bl = {0, bloc.x1, bloc.y1}; // Bottom-left
+//         Point tr = {0, bloc.x2, bloc.y2}; // Top-right
+//         Point br = {0, bloc.x2, bloc.y1}; // Bottom-right
+//         Point tl = {0, bloc.x1, bloc.y2}; // Top-left
+
+//         // Check for intersection with any side of the blockage
+//         bool intersects =
+//             doIntersect(*node1, *node2, bl, br) ||
+//             doIntersect(*node1, *node2, br, tr) ||
+//             doIntersect(*node1, *node2, tr, tl) ||
+//             doIntersect(*node1, *node2, tl, bl);
+
+//         if (intersects) {
+//             // Check if the edge lies entirely on the boundary
+//             if ((onSegment(bl, *node1, br) && onSegment(bl, *node2, br)) || // Bottom edge
+//                 (onSegment(br, *node1, tr) && onSegment(br, *node2, tr)) || // Right edge
+//                 (onSegment(tr, *node1, tl) && onSegment(tr, *node2, tl)) || // Top edge
+//                 (onSegment(tl, *node1, bl) && onSegment(tl, *node2, bl))) {
+//                 continue; // Consider as not blocked
+//             }
+//             return true; // Edge is blocked
+//         }
+//     }
+
+//     return false; // Edge is unblocked
+// }
+
     // Function to check the orientation of the triplet (p, q, r)
     int orientation(const Point& p, const Point& q, const Point& r) {
         double val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
@@ -390,35 +453,100 @@ public:
 
 
     // Function that checks if an edge is crossing any blockages
-    bool isEdgeBlocked(Edge edge, std::vector<Point> tempPoints){
-        std::cout << "top of isEdgeBlocked()\n";
-        const Point* node1_ptr = findPointByID_list(edge.node1, tempPoints);
-        const Point* node2_ptr = findPointByID_list(edge.node2, tempPoints);
-        // std::cout << "Points read\n";
-        // std::cout << "Any null : " << (edge.node1) << "\n";
-        //Make exception for diagonal edges
-        if(node1_ptr->x != node2_ptr->x && node1_ptr->y != node2_ptr->y){
-            std::cout << "Diagonal exception" << edge.weight << "\n";
+    bool isEdgeBlocked(Edge edge, std::vector<Point> tempPoints) {
+        Point node1_ptr = *findPointByID_list(edge.node1, tempPoints);
+        Point node2_ptr = *findPointByID_list(edge.node2, tempPoints);
+        std::cout << "IN FUNCTION:" << edge.weight << "\n";
+        // Make exception for diagonal edges
+        if ((node1_ptr.x != node2_ptr.x) && (node1_ptr.y != node2_ptr.y)) {
+            std::cout << "diagonal case: " << node1_ptr.x << "  "
+            << node2_ptr.x << "  " << node1_ptr.y << "  " << node2_ptr.y << "\n";
             return false;
         }
-        
-        for(const auto& bloc: blockages){
-            Point bl = {1, bloc.x1, bloc.y1}; // bottom-left 
-            Point tr = {2, bloc.x2, bloc.y2}; // top-right 
-            Point br = {3, bloc.x2, bloc.y1}; // bottom-right 
-            Point tl = {4, bloc.x1, bloc.y2}; // top-left
 
-            // Check if the edge intersects any side of the blockage rectangle 
-            if (doIntersect(*node1_ptr, *node2_ptr, bl, br) || 
-                doIntersect(*node1_ptr, *node2_ptr, br, tr) || 
-                doIntersect(*node1_ptr, *node2_ptr, tr, tl) || 
-                doIntersect(*node1_ptr, *node2_ptr, tl, bl)) { 
-                    return true; // Edge is blocked 
+        std::cout << "Cords: " << node1_ptr.x << "  "
+            << node2_ptr.x << "  " << node1_ptr.y << "  " << node2_ptr.y << "\n";
+        
+        for (const auto& bloc : blockages) {
+            Point bl = {1, bloc.x1, bloc.y1}; // bottom-left
+            Point tr = {2, bloc.x2, bloc.y2}; // top-right
+            Point br = {3, bloc.x2, bloc.y1}; // bottom-right
+            Point tl = {4, bloc.x1, bloc.y2}; // top-left
+            std::cout << "IN LOOP:" << edge.weight << "\n";
+            // Check if the edge intersects any side of the blockage rectangle
+            if (doIntersect(node1_ptr, node2_ptr, bl, br) || 
+                doIntersect(node1_ptr, node2_ptr, br, tr) || 
+                doIntersect(node1_ptr, node2_ptr, tr, tl) || 
+                doIntersect(node1_ptr, node2_ptr, tl, bl)) {
+                std::cout << "DO INTERSECT:" << edge.weight << "\n";
+                // Additional checks
+                // To see if the edge lies on the boundary
+                if ((onSegment(bl, node1_ptr, br) && onSegment(bl, node2_ptr, br)) || // Bottom edge
+                    (onSegment(br, node1_ptr, tr) && onSegment(br, node2_ptr, tr)) || // Right edge
+                    (onSegment(tr, node1_ptr, tl) && onSegment(tr, node2_ptr, tl)) || // Top edge
+                    (onSegment(tl, node1_ptr, bl) && onSegment(tl, node2_ptr, bl))) { // Left edge
+                    return false; // Edge lies on the boundary
+                }
+                // To see if edge nodes lie on blockage corners
+                int cornerCount = 0;
+                if ((node1_ptr.x == bl.x && node1_ptr.y == bl.y) || 
+                    (node2_ptr.x == bl.x && node2_ptr.y == bl.y)) {
+                    cornerCount++;
+                }
+                if ((node1_ptr.x == br.x && node1_ptr.y == br.y) || 
+                    (node2_ptr.x == br.x && node2_ptr.y == br.y)) {
+                    cornerCount++;
+                }
+                if ((node1_ptr.x == tr.x && node1_ptr.y == tr.y) || 
+                    (node2_ptr.x == tr.x && node2_ptr.y == tr.y)) {
+                    cornerCount++;
+                }
+                if ((node1_ptr.x == tl.x && node1_ptr.y == tl.y) || 
+                    (node2_ptr.x == tl.x && node2_ptr.y == tl.y)) {
+                    cornerCount++;
+                }
+                std::cout << "Corner Count = " << cornerCount << "\n";
+                if (cornerCount == 1) {
+                    return false; // Edge touches only two corners
+                }   
+
+                return true; // Edge intersects and does not lie on the boundary
             }
         }
 
-        return false; // Edge is unblocked 
+        return false; // Edge is unblocked
     }
+
+
+    // bool isEdgeBlocked(Edge edge, std::vector<Point> tempPoints){
+    //     std::cout << "top of isEdgeBlocked()\n";
+    //     const Point* node1_ptr = findPointByID_list(edge.node1, tempPoints);
+    //     const Point* node2_ptr = findPointByID_list(edge.node2, tempPoints);
+    //     // std::cout << "Points read\n";
+    //     // std::cout << "Any null : " << (edge.node1) << "\n";
+    //     //Make exception for diagonal edges
+    //     if(node1_ptr->x != node2_ptr->x && node1_ptr->y != node2_ptr->y){
+    //         std::cout << "Diagonal exception" << edge.weight << "\n";
+    //         return false;
+    //     }
+        
+    //     for(const auto& bloc: blockages){
+    //         Point bl = {1, bloc.x1, bloc.y1}; // bottom-left 
+    //         Point tr = {2, bloc.x2, bloc.y2}; // top-right 
+    //         Point br = {3, bloc.x2, bloc.y1}; // bottom-right 
+    //         Point tl = {4, bloc.x1, bloc.y2}; // top-left
+
+    //         // Check if the edge intersects any side of the blockage rectangle 
+    //         if (doIntersect(*node1_ptr, *node2_ptr, bl, br) || 
+    //             doIntersect(*node1_ptr, *node2_ptr, br, tr) || 
+    //             doIntersect(*node1_ptr, *node2_ptr, tr, tl) || 
+    //             doIntersect(*node1_ptr, *node2_ptr, tl, bl)) { 
+    //                 return true; // Edge is blocked 
+    //         }
+    //     }
+
+    //     return false; // Edge is unblocked 
+    // }
 
     // Function to get the number of edges crossing blockages 
     double getNumberOfEdgeBlockages (std::vector<Edge> MST, std::vector<Point> tempPoints){
@@ -454,6 +582,77 @@ public:
         // Return the total blockage cost
         return cost;
     }
+
+    // Function to check if a point on the edge of some blockage
+    bool isPointOnBlockageEdge(Point p){
+        bool output = false;
+        for(const auto& bloc: blockages){
+
+            // Get the min and max coordinates of the blockage
+            double x_min = std::min(bloc.x1, bloc.x2), x_max = std::max(bloc.x1, bloc.x2);
+            double y_min = std::min(bloc.y1, bloc.y2), y_max = std::max(bloc.y1, bloc.y2);
+
+            // Check if the point is on the vertical or horizontal edges
+            bool on_vertical_edge = (p.x == x_min || p.x == x_max) && (p.y >= y_min && p.y <= y_max);
+            bool on_horizontal_edge = (p.y == y_min || p.y == y_max) && (p.x >= x_min && p.x <= x_max);
+
+            output = output || (on_vertical_edge || on_horizontal_edge);
+        }
+        return output;
+    }
+
+    // Function to determine the other 3 points around the blockage
+    std::vector<Point> findPathAroundBlockage(Point edgePt, Block block){
+        
+        // Get the min and max coordinates of the blockage
+        double x_min = std::min(block.x1, block.x2), x_max = std::max(block.x1, block.x2);
+        double y_min = std::min(block.y1, block.y2), y_max = std::max(block.y1, block.y2);
+
+        std::vector<Point> path;
+        
+        int ID = 3000; // temp ID for new points
+        // Check where the edgePoint lies and add points accordingly
+        if (edgePt.x == x_min) {
+            // Left vertical edge
+            path.push_back({ID + 1, x_min, edgePt.y});       // Starting point
+            path.push_back({ID + 2, x_min, y_min});   // Bottom-left corner
+            path.push_back({ID + 3, x_max, y_min});   // Bottom-right corner
+            path.push_back({ID + 4, x_max, edgePt.y});      // End point on the right vertical edge
+        } else if (edgePt.x == x_max) {
+            // Right vertical edge
+            path.push_back({ID + 5, x_max, edgePt.y});       // Starting point
+            path.push_back({ID + 6, x_max, y_max});   // Top-right corner
+            path.push_back({ID + 7, x_min, y_max});   // Top-left corner
+            path.push_back({ID + 8, x_min, edgePt.y});      // End point on the left vertical edge
+        } else if (edgePt.y == y_min) {
+            // Bottom horizontal edge
+            path.push_back({ID + 9, edgePt.x, y_min});      // Starting point
+            path.push_back({ID + 10, x_max, y_min});   // Bottom-right corner
+            path.push_back({ID + 11, x_max, y_max});   // Top-right corner
+            path.push_back({ID + 12, edgePt.x, y_max});      // End point on the top horizontal edge
+        } else if (edgePt.y == y_max) {
+            // Top horizontal edge
+            path.push_back({ID + 13, edgePt.x, y_max});      // Starting point
+            path.push_back({ID + 14, x_min, y_max});   // Top-left corner
+            path.push_back({ID + 15, x_min, y_min});   // Bottom-left corner
+            path.push_back({ID + 16, edgePt.x, y_min});      // End point on the bottom horizontal edge
+        }
+
+        return path;
+    }
+
+    // Helper func to get Block that contains point (point on  block's edge is considered to be in block)
+    Block getBlockagebyPoint(Point pt){
+        Block block_output;
+        for (const auto& b: blockages){
+            if(b.x1 <= pt.x && pt.x <= b.x2 && b.y1 <= pt.y && pt.y <= b.y2){
+                block_output = b;
+                break;
+            }
+        }
+        return block_output;
+    }
+
 
     // =================== ADD STEINER POINTS ===================
     void addSteinerPoints() {
@@ -512,8 +711,14 @@ public:
                           << ", improvement=" << bestImprovement << "\n";
 
                 baseLength = newBaseLen; // update baseline
-                // Recompute Hanan grid with newly added point
-                hanan = getHananGridPoints(points);
+                // // Recompute Hanan grid with newly added point
+                // hanan = getHananGridPoints(points);
+                
+                // Remove added Steiner point from Hanan points(potential steiner points)
+                hanan.erase(std::remove_if(hanan.begin(), hanan.end(), 
+                               [&bestSteiner](const Point& p) {
+                                   return p.id == bestSteiner.id;
+                               }), hanan.end());
             }
         }
 
@@ -572,27 +777,106 @@ public:
             } else {
                 // Add intermediate Steiner point
                 int midID = 20000 + e.node1; // any unique ID scheme
-                Point p_option1;
+                Point p_option1; //L-point 1
                 p_option1.x = p1->x;
                 p_option1.y = p2->y;
-                Point p_option2;
+                Point p_option2; //L-point 2
                 p_option2.x = p2->x;
                 p_option2.y = p1->y;
                 Point intermediatePt;
-            
+                // if (isBlocked(p_option1) && isBlocked(p_option2)){
+
+                // }
                 if (isBlocked(p_option1)){
-                    intermediatePt = {midID, p2->x, p1->y};
+                    intermediatePt = {midID, p2->x, p1->y}; //option 2
                 }
                 else{
-                    intermediatePt = {midID, p1->x, p2->y};
+                    intermediatePt = {midID, p1->x, p2->y}; //option 1
                 }
+
                 points.push_back(intermediatePt);
 
                 // Create two new edges
                 Edge newEdge1 = {e.node1, midID, mhDistance(*findPointByID(e.node1), intermediatePt)};
                 Edge newEdge2 = {midID, e.node2, mhDistance(intermediatePt, *findPointByID(e.node2))};
-                updatedEdges.push_back(newEdge1);
-                updatedEdges.push_back(newEdge2);
+
+                //DEBUG
+                std::vector<Edge> debug_e;
+                debug_e.push_back(newEdge1);
+                debug_e.push_back(newEdge2);
+                std::cout << "New Edges\n";
+                printEdges(debug_e);
+                std::cout << "NewEdge1 blocked= " << isEdgeBlocked(newEdge1, points) << "\n"
+                << "NewEdge2 blocked= " << isEdgeBlocked(newEdge2, points) << "\n";
+
+                if(!isEdgeBlocked(newEdge1, points) && !isEdgeBlocked(newEdge2, points)){
+                    updatedEdges.push_back(newEdge1);
+                    updatedEdges.push_back(newEdge2);
+                    std::cout << "NORMAL CASE\n";
+                }
+                else if ( isEdgeBlocked(newEdge1, points) && !isEdgeBlocked(newEdge2, points)) {
+                    std::cout << "CASE 2" << "\n";
+                    updatedEdges.push_back(newEdge2); //push the unblocked edge
+                    // Here newedge1 is blocked
+                    double edgePt_ID = isPointOnBlockageEdge(*findPointByID(newEdge1.node1)) ? 
+                                            newEdge1.node1 : newEdge1.node2;
+                    Point debug = *findPointByID(edgePt_ID);
+                    
+                    std::cout << "EdgePt x= " << debug.x << ", y= " << debug.y << "\n";
+                    Block curr_block = getBlockagebyPoint(*findPointByID(edgePt_ID));
+                    std::cout << "Block ID= " << curr_block.id << "\n";
+                    std::vector<Point> path = findPathAroundBlockage(*findPointByID(edgePt_ID), curr_block);
+                    for(const auto& pathPt: path){
+                        points.push_back(pathPt);
+                    }
+                    path.push_back(*findPointByID(newEdge1.node2));
+
+                    // Push the path edges
+                    bool swch = false;
+                    Point prev;
+                    for(const auto& P: path){
+                        if(swch){
+                            updatedEdges.push_back({prev.id, P.id, mhDistance(prev, P)});
+                        }
+                        prev = P;
+                        swch = true;
+                    }
+
+                }
+                else if (!isEdgeBlocked(newEdge1, points) && isEdgeBlocked(newEdge2, points)) {
+                    std::cout << "CASE 3" << "\n";
+                    updatedEdges.push_back(newEdge1); //push the unblocked edge
+                    // Here newedge2 is blocked
+                    double edgePt_ID = isPointOnBlockageEdge(*findPointByID(newEdge2.node1)) ? 
+                                            newEdge2.node1 : newEdge1.node2;
+                    Block curr_block = getBlockagebyPoint(*findPointByID(edgePt_ID));
+                    
+                    std::vector<Point> path = findPathAroundBlockage(*findPointByID(edgePt_ID), curr_block);
+                    for(const auto& pathPt: path){
+                        points.push_back(pathPt);
+                    }
+                    path.push_back(*findPointByID(newEdge2.node2));
+
+                    // Push the path edges
+                    bool swch = false;
+                    Point prev;
+                    for(const auto& P: path){
+                        if(swch){
+                            updatedEdges.push_back({prev.id, P.id, mhDistance(prev, P)});
+                        }
+                        prev = P;
+                        swch = true;
+                    }
+
+                }
+                else{
+                    std::cout << "CASE 4" << "\n";
+                    // Here newEdge1 and newEdge2 are blocked
+
+
+                }
+
+
             }
         }
         // Replace edges with updatedEdges
@@ -674,8 +958,10 @@ public:
     void printEdges(const std::vector<Edge>& edgeList) {
         std::cout << "Total number of edges: " << edgeList.size() << "\n";
         for (auto& e : edgeList) {
-            std::cout << "Edge between " << e.node1
-                      << " and " << e.node2
+            Point p1 = *findPointByID(e.node1);
+            Point p2 = *findPointByID(e.node2);
+            std::cout << "Edge between " << e.node1 <<" (" << p1.x << ", " << p1.y << ")"
+                      << " and " << e.node2 <<" (" << p2.x << ", " << p2.y << ")"
                       << " has Manhattan distance: " << e.weight << "\n";
         }
     }
