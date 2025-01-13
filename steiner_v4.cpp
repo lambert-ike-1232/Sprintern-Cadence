@@ -869,11 +869,50 @@ public:
                     }
 
                 }
-                else{
+                else {
                     std::cout << "CASE 4" << "\n";
-                    // Here newEdge1 and newEdge2 are blocked
+                    // Both edges are blocked
+                    
+                    // Handle first blocked edge (newEdge1)
+                    double edgePt1_ID = isPointOnBlockageEdge(*findPointByID(newEdge1.node1)) ? 
+                                        newEdge1.node1 : newEdge1.node2;
+                    Block block1 = getBlockagebyPoint(*findPointByID(edgePt1_ID));
+                    std::vector<Point> path1 = findPathAroundBlockage(*findPointByID(edgePt1_ID), block1);
+                    for(const auto& pathPt: path1) {
+                        points.push_back(pathPt);
+                    }
+                    path1.push_back(*findPointByID(newEdge1.node2));
 
+                    // Handle second blocked edge (newEdge2)
+                    double edgePt2_ID = isPointOnBlockageEdge(*findPointByID(newEdge2.node1)) ? 
+                                        newEdge2.node1 : newEdge2.node2;
+                    Block block2 = getBlockagebyPoint(*findPointByID(edgePt2_ID));
+                    std::vector<Point> path2 = findPathAroundBlockage(*findPointByID(edgePt2_ID), block2);
+                    for(const auto& pathPt: path2) {
+                        points.push_back(pathPt);
+                    }
+                    path2.push_back(*findPointByID(newEdge2.node2));
 
+                    // Add path1 edges
+                    bool swch = false;
+                    Point prev;
+                    for(const auto& P: path1) {
+                        if(swch) {
+                            updatedEdges.push_back({prev.id, P.id, mhDistance(prev, P)});
+                        }
+                        prev = P;
+                        swch = true;
+                    }
+
+                    // Add path2 edges
+                    swch = false;
+                    for(const auto& P: path2) {
+                        if(swch) {
+                            updatedEdges.push_back({prev.id, P.id, mhDistance(prev, P)});
+                        }
+                        prev = P;
+                        swch = true;
+                    }
                 }
 
 
