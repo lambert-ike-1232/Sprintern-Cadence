@@ -45,7 +45,11 @@ public:
     }
 
     int find(int u) {
-        if (u < 0 || u >= parent.size()) throw std::out_of_range("Index out of range");
+        if (u < 0 || u >= parent.size()) {
+            std::cout << "Index value " << u << " of size " << parent.size() << "\n";
+            throw std::out_of_range("Index out of range");
+        }
+        
         if (parent[u] != u) parent[u] = find(parent[u]);
         return parent[u];
     }
@@ -126,21 +130,62 @@ public:
         return std::fabs(a.x - b.x) + std::fabs(a.y - b.y);
     }
 
+    // std::vector<Edge> constructMST() {
+    //     std::vector<Edge> mstEdges;
+        
+    //     std::sort(edges.begin(), edges.end(), [](const Edge& e1, const Edge& e2) { return e1.weight < e2.weight; });
+        
+        
+    //     UnionFind uf(numberOfPoints);
+    //     for (const auto& edge : edges) {
+    //         int u = edge.node1, v = edge.node2;
+    //         if (uf.find(u) != uf.find(v)) {
+    //             mstEdges.push_back(edge);
+    //             uf.unite(u, v);
+    //             if (mstEdges.size() == points.size() - 1) break;
+    //         }
+    //     }
+    //     return mstEdges;
+    // }
+
     std::vector<Edge> constructMST() {
         std::vector<Edge> mstEdges;
+
         std::sort(edges.begin(), edges.end(), [](const Edge& e1, const Edge& e2) { return e1.weight < e2.weight; });
 
-        UnionFind uf(numberOfPoints);
+        // Map point IDs to indices
+        std::unordered_map<int, int> idToIndex;
+        for (int i = 0; i < points.size(); ++i) {
+            idToIndex[points[i].id] = i;
+        }
+
+        UnionFind uf(points.size());
         for (const auto& edge : edges) {
-            int u = edge.node1, v = edge.node2;
+            // Ensure valid edge nodes
+            if (idToIndex.find(edge.node1) == idToIndex.end() || idToIndex.find(edge.node2) == idToIndex.end()) {
+                std::cerr << "Invalid edge: " << edge.node1 << " -> " << edge.node2 << "\n";
+                continue;
+            }
+
+            int u = idToIndex[edge.node1];
+            int v = idToIndex[edge.node2];
+
             if (uf.find(u) != uf.find(v)) {
                 mstEdges.push_back(edge);
                 uf.unite(u, v);
                 if (mstEdges.size() == points.size() - 1) break;
             }
         }
+
+        // Check for disconnected graph
+        if (mstEdges.size() < points.size() - 1) {
+            std::cerr << "Warning: Graph is not connected. MST size = " 
+                    << mstEdges.size() << "\n";
+        }
+
         return mstEdges;
     }
+
 
     std::vector<double> getUniqueCoords(const std::vector<Point>& pts, bool isX) {
         std::set<double> coords;
