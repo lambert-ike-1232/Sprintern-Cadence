@@ -264,29 +264,23 @@ public:
         auto xVals = getUniqueCoords(pts, true);
         auto yVals = getUniqueCoords(pts, false);
 
-        // Extended hanan grid points with an offset
+        // Extended hanan grid points
         std::set<double> xVals_blockage;
         std::set<double> yVals_blockage;
-        const double OFFSET = 0.1; // Define an offset value
-
-        for (const auto& b : blockages) {
-            xVals_blockage.insert(b.x1 - OFFSET);
+        for (const auto& b: blockages){
             xVals_blockage.insert(b.x1);
             xVals_blockage.insert(b.x2);
-            xVals_blockage.insert(b.x2 + OFFSET);
-            yVals_blockage.insert(b.y1 - OFFSET);
             yVals_blockage.insert(b.y1);
             yVals_blockage.insert(b.y2);
-            yVals_blockage.insert(b.y2 + OFFSET);
         }
-
-        // Iterate through x and y sets and add the x and y values
-        for (const auto& x : xVals_blockage) {
+    
+        // //Iterate through x and y sets and add the x and y values
+        for (const auto& x: xVals_blockage){
             xVals.push_back(x);
         }
 
-        for (const auto& y : yVals_blockage) {
-            yVals.push_back(y);
+        for (const auto& y: yVals_blockage){
+                yVals.push_back(y);
         }
 
         std::vector<Point> candidates;
@@ -304,9 +298,9 @@ public:
                 }
                 if (!alreadyExists) {
                     Point sp;
-                    sp.id = startId++;
-                    sp.x = x;
-                    sp.y = y;
+                    sp.id   = startId++;
+                    sp.x    = x;
+                    sp.y    = y;
                     sp.sink = false; // Steiner
                     candidates.push_back(sp);
                 }
@@ -322,8 +316,9 @@ public:
             std::cout << "   ID=" << c.id
                       << "  (x=" << c.x << ", y=" << c.y << ")\n";
         }
-        std::cout << "[DEBUG] Total candidate Hanan points: "
+        std::cout << "[DEBUG] Total candidate Hanan points: " 
                   << candidates.size() << "\n\n";
+
 
         return candidates;
     }
@@ -666,51 +661,44 @@ public:
     }
 
     // Function to determine the other 3 points around the blockage
-    std::vector<Point> findPathAroundBlockage(Point edgePt, Block block) {
-    // Get the min and max coordinates of the blockage
-    double x_min = std::min(block.x1, block.x2), x_max = std::max(block.x1, block.x2);
-    double y_min = std::min(block.y1, block.y2), y_max = std::max(block.y1, block.y2);
+    std::vector<Point> findPathAroundBlockage(Point edgePt, Block block){
+        
+        // Get the min and max coordinates of the blockage
+        double x_min = std::min(block.x1, block.x2), x_max = std::max(block.x1, block.x2);
+        double y_min = std::min(block.y1, block.y2), y_max = std::max(block.y1, block.y2);
 
-    std::vector<Point> path;
-    int ID = 3000; // temp ID for new points
+        std::vector<Point> path;
+        
+        int ID = 3000; // temp ID for new points
+        // Check where the edgePoint lies and add points accordingly
+        if (edgePt.x == x_min) {
+            // Left vertical edge
+            path.push_back({ID + 1, x_min, edgePt.y});       // Starting point
+            path.push_back({ID + 2, x_min, y_min});   // Bottom-left corner
+            path.push_back({ID + 3, x_max, y_min});   // Bottom-right corner
+            path.push_back({ID + 4, x_max, edgePt.y});      // End point on the right vertical edge
+        } else if (edgePt.x == x_max) {
+            // Right vertical edge
+            path.push_back({ID + 5, x_max, edgePt.y});       // Starting point
+            path.push_back({ID + 6, x_max, y_max});   // Top-right corner
+            path.push_back({ID + 7, x_min, y_max});   // Top-left corner
+            path.push_back({ID + 8, x_min, edgePt.y});      // End point on the left vertical edge
+        } else if (edgePt.y == y_min) {
+            // Bottom horizontal edge
+            path.push_back({ID + 9, edgePt.x, y_min});      // Starting point
+            path.push_back({ID + 10, x_max, y_min});   // Bottom-right corner
+            path.push_back({ID + 11, x_max, y_max});   // Top-right corner
+            path.push_back({ID + 12, edgePt.x, y_max});      // End point on the top horizontal edge
+        } else if (edgePt.y == y_max) {
+            // Top horizontal edge
+            path.push_back({ID + 13, edgePt.x, y_max});      // Starting point
+            path.push_back({ID + 14, x_min, y_max});   // Top-left corner
+            path.push_back({ID + 15, x_min, y_min});   // Bottom-left corner
+            path.push_back({ID + 16, edgePt.x, y_min});      // End point on the bottom horizontal edge
+        }
 
-    // Check where the edgePoint lies and add points accordingly
-    if (edgePt.x == x_min) {
-        // Left vertical edge
-        path.push_back({ID + 1, x_min, edgePt.y});       // Starting point
-        path.push_back({ID + 2, x_min, y_min - 0.1});    // Bottom-left corner (detour)
-        path.push_back({ID + 3, x_max + 0.1, y_min - 0.1}); // Bottom-right corner (detour)
-        path.push_back({ID + 4, x_max + 0.1, y_max + 0.1}); // Top-right corner (detour)
-        path.push_back({ID + 5, x_min, y_max + 0.1});    // Top-left corner (detour)
-        path.push_back({ID + 6, x_min, edgePt.y});       // End point on the left vertical edge
-    } else if (edgePt.x == x_max) {
-        // Right vertical edge
-        path.push_back({ID + 7, x_max, edgePt.y});       // Starting point
-        path.push_back({ID + 8, x_max, y_max + 0.1});    // Top-right corner (detour)
-        path.push_back({ID + 9, x_min - 0.1, y_max + 0.1}); // Top-left corner (detour)
-        path.push_back({ID + 10, x_min - 0.1, y_min - 0.1}); // Bottom-left corner (detour)
-        path.push_back({ID + 11, x_max, y_min - 0.1});   // Bottom-right corner (detour)
-        path.push_back({ID + 12, x_max, edgePt.y});      // End point on the right vertical edge
-    } else if (edgePt.y == y_min) {
-        // Bottom horizontal edge
-        path.push_back({ID + 13, edgePt.x, y_min});      // Starting point
-        path.push_back({ID + 14, x_max + 0.1, y_min});   // Bottom-right corner (detour)
-        path.push_back({ID + 15, x_max + 0.1, y_max + 0.1}); // Top-right corner (detour)
-        path.push_back({ID + 16, x_min - 0.1, y_max + 0.1}); // Top-left corner (detour)
-        path.push_back({ID + 17, x_min - 0.1, y_min});   // Bottom-left corner (detour)
-        path.push_back({ID + 18, edgePt.x, y_min});      // End point on the bottom horizontal edge
-    } else if (edgePt.y == y_max) {
-        // Top horizontal edge
-        path.push_back({ID + 19, edgePt.x, y_max});      // Starting point
-        path.push_back({ID + 20, x_min - 0.1, y_max});   // Top-left corner (detour)
-        path.push_back({ID + 21, x_min - 0.1, y_min - 0.1}); // Bottom-left corner (detour)
-        path.push_back({ID + 22, x_max + 0.1, y_min - 0.1}); // Bottom-right corner (detour)
-        path.push_back({ID + 23, x_max + 0.1, y_max});   // Top-right corner (detour)
-        path.push_back({ID + 24, edgePt.x, y_max});      // End point on the top horizontal edge
+        return path;
     }
-
-    return path;
-}
 
     // Helper func to get Block that contains point (point on  block's edge is considered to be in block)
     Block getBlockagebyPoint(Point pt){
@@ -1166,7 +1154,7 @@ void reorderOutputFile(const std::string &filename) {
 int main() {
     try {
         // 1) Initialize
-        SteinerTree steiner("data_b/r62b.in");
+        SteinerTree steiner("data_b/r31b.in");
 
         // 2) Print sinks that we read in
         steiner.printSinks();
