@@ -503,7 +503,7 @@ int main()
 {
     try
     {
-        SteinerTree steiner("data_b/r31b.in");
+        SteinerTree steiner("r31b in.txt");
 
         steiner.printSinks();
         steiner.displayBlockages();
@@ -522,4 +522,4 @@ int main()
         std::cerr << "Error: " << ex.what() << std::endl;
         return 1;
     }
-} 
+}
