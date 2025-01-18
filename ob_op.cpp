@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cmath>
 #include <unordered_map>
+#include <unordered_set>
 #include <algorithm>
 #include <set>
 #include <limits>
@@ -110,6 +111,8 @@ private:
 
         if (isInsideBlock(start) || isInsideBlock(end))
         {
+            std::cout << "Edge from (" << start.first << ", " << start.second << ") to ("
+                      << end.first << ", " << end.second << ") is inside block " << block.id << "\n";
             return true;
         }
 
@@ -125,6 +128,8 @@ private:
         {
             if (doLinesIntersect(start, end, blockEdge.first, blockEdge.second))
             {
+                std::cout << "Edge from (" << start.first << ", " << start.second << ") to ("
+                          << end.first << ", " << end.second << ") intersects with block " << block.id << "\n";
                 return true;
             }
         }
@@ -141,6 +146,8 @@ private:
         {
             if (doesEdgeIntersectBlock(start, end, block))
             {
+                std::cout << "Edge from (" << start.first << ", " << start.second << ") to ("
+                          << end.first << ", " << end.second << ") is blocked by block " << block.id << "\n";
                 return true;
             }
         }
@@ -161,11 +168,13 @@ private:
             if (doesEdgeIntersectBlock(start, end, block))
             {
                 // Add intermediate points to go around the block
-                // More strategic placement of points, e.g., avoiding sharp detours
                 Point intermediate1(block.x1 - 0.1, block.y1 - 0.1); // Use geometry to make detours optimal
                 Point intermediate2(block.x2 + 0.1, block.y2 + 0.1);
                 path.push_back(intermediate1);
                 path.push_back(intermediate2);
+                std::cout << "Adding detour points around block " << block.id << ": ("
+                          << intermediate1.x << ", " << intermediate1.y << ") and ("
+                          << intermediate2.x << ", " << intermediate2.y << ")\n";
                 break;
             }
         }
@@ -190,6 +199,7 @@ private:
                 if (!isEdgeBlocked(start, end, blockages))
                 {
                     oasgEdges.emplace_back(points[i].id, points[j].id, mhDistance(points[i], points[j]));
+                    std::cout << "Adding edge between points " << points[i].id << " and " << points[j].id << "\n";
                 }
                 else
                 {
@@ -201,6 +211,7 @@ private:
                         pathLength += mhDistance(path[k - 1], path[k]);
                     }
                     oasgEdges.emplace_back(points[i].id, points[j].id, pathLength);
+                    std::cout << "Adding edge with detour between points " << points[i].id << " and " << points[j].id << " with length " << pathLength << "\n";
                 }
             }
         }
@@ -246,15 +257,15 @@ private:
                 }
             }
 
+            if (u == -1) // If no vertex is found, break
+                break;
+
             inMST[u] = true;
             if (parent[u] != -1)
             {
                 Edge e(pts[u].id, pts[parent[u]].id, mhDistance(pts[u], pts[parent[u]]));
-                int pu = parent[u];
-                e.node1 = pts[u].id;
-                e.node2 = pts[pu].id;
-                e.weight = mhDistance(pts[u], pts[pu]);
                 mstEdges.push_back(e);
+                std::cout << "Adding edge to MST: " << e.node1 << " - " << e.node2 << " with weight " << e.weight << "\n";
             }
 
             for (int v = 0; v < n; v++)
@@ -266,6 +277,7 @@ private:
                     {
                         dist[v] = cost;
                         parent[v] = u;
+                        std::cout << "Updating distance for point " << pts[v].id << " to " << cost << "\n";
                     }
                 }
             }
@@ -279,6 +291,7 @@ private:
                 totalLen += e.weight;
             }
             *outMstLen = totalLen;
+            std::cout << "Total MST length: " << totalLen << "\n";
         }
         return mstEdges;
     }
@@ -310,6 +323,7 @@ public:
             if (keyword == "number_of_sinks")
             {
                 iss >> numberOfPoints;
+                std::cout << "Number of sinks read: " << numberOfPoints << "\n";
             }
             else if (keyword == "sink")
             {
@@ -317,16 +331,20 @@ public:
                 iss >> sink.id >> sink.x >> sink.y;
                 sink.sink = true;
                 points.push_back(sink);
+                std::cout << "Sink added: ID " << sink.id << " at (" << sink.x << ", " << sink.y << ")\n";
             }
             else if (keyword == "number_of_blockages")
             {
                 iss >> numberOfBlocks;
+                std::cout << "Number of blockages read: " << numberOfBlocks << "\n";
             }
             else if (keyword == "blockage")
             {
                 Block block;
                 iss >> block.id >> block.x1 >> block.y1 >> block.x2 >> block.y2;
                 blockages.push_back(block);
+                std::cout << "Blockage added: ID " << block.id << " from (" << block.x1 << ", " << block.y1 << ") to ("
+                          << block.x2 << ", " << block.y2 << ")\n";
             }
         }
         inputFile.close();
@@ -382,34 +400,49 @@ public:
     {
         auto oasgEdges = obstacleAvoidingSpanningGraph(points, blockages);
         return computePrimMST(points);
-        // The rest of your obstacleAvoidingRectilinearSteinerTree function
     }
 
     // Add Steiner points to MST
     std::vector<Edge> addSteinerPointsToMST(const std::vector<Edge> &mstEdges)
     {
-        std::vector<Edge> updatedEdges;
+        std::vector<Edge> updatedEdges = mstEdges; // Start with existing MST edges
+        std::unordered_set<int> existingNodes;     // To track existing nodes in the MST
+
+        // Add existing nodes to the set
         for (const auto &e : mstEdges)
         {
-            std::pair<double, double> start = {findPointByID(e.node1)->x, findPointByID(e.node1)->y};
-            std::pair<double, double> end = {findPointByID(e.node2)->x, findPointByID(e.node2)->y};
-            if (isEdgeBlocked(start, end, blockages))
-            {
+            existingNodes.insert(e.node1);
+            existingNodes.insert(e.node2);
+        }
 
-                std::vector<Point> path = findPathAroundBlockage(start, end, blockages);
-                // Assuming findPathAroundBlockage returns points with IDs
-                for (size_t i = 1; i < path.size(); ++i)
+        // Iterate through the points to add Steiner points
+        for (const auto &point : points)
+        {
+            if (!point.sink) // Only consider Steiner points
+            {
+                double minDist = std::numeric_limits<double>::infinity();
+                int closestNode = -1;
+
+                // Find the closest existing node in the MST
+                for (const auto &node : existingNodes)
                 {
-                    updatedEdges.emplace_back(path[i - 1].id, path[i].id, mhDistance(path[i - 1], path[i]));
-                    // Add the new point from path to the points list
-                    points.push_back(path[i]);
+                    double dist = mhDistance(point, *findPointByID(node));
+                    if (dist < minDist)
+                    {
+                        minDist = dist;
+                        closestNode = node;
+                    }
+                }
+
+                // If a closest node is found, add an edge to the MST
+                if (closestNode != -1 && minDist > 0) // Ensure there's a valid distance
+                {
+                    updatedEdges.emplace_back(point.id, closestNode, minDist);
+                    std::cout << "Connecting Steiner point " << point.id << " to existing node " << closestNode << " with distance " << minDist << "\n";
                 }
             }
-            else
-            {
-                updatedEdges.push_back(e);
-            }
         }
+
         return updatedEdges;
     }
 
@@ -432,15 +465,31 @@ public:
             }
             else
             {
-                //  If not on the same horizontal/vertical line, add an intermediate point
+                // If not on the same horizontal/vertical line, add an intermediate point
                 Point intermediatePt = {ID_COUNTER++, p2->x, p1->y, false};
-                points.push_back(intermediatePt); // Add the new point
+                addUniqueSteinerPoint(intermediatePt); // Add unique point
 
                 updatedEdges.emplace_back(e.node1, intermediatePt.id, mhDistance(*p1, intermediatePt));
                 updatedEdges.emplace_back(intermediatePt.id, e.node2, mhDistance(intermediatePt, *p2));
+                std::cout << "Adding intermediate point " << intermediatePt.id << " between " << e.node1 << " and " << e.node2 << "\n";
             }
         }
         return updatedEdges;
+    }
+
+    // Function to add unique Steiner point
+    void addUniqueSteinerPoint(const Point &newPoint)
+    {
+        for (const auto &p : points)
+        {
+            if (p.x == newPoint.x && p.y == newPoint.y)
+            {
+                std::cout << "Duplicate point found: (" << newPoint.x << ", " << newPoint.y << "), not adding.\n";
+                return; // Duplicate found, do not add
+            }
+        }
+        points.push_back(newPoint); // Add unique Steiner point
+        std::cout << "Unique Steiner point added: ID " << newPoint.id << " at (" << newPoint.x << ", " << newPoint.y << ")\n";
     }
 
     // Write output to file
@@ -452,8 +501,10 @@ public:
             throw std::runtime_error("Error opening output file: " + outFile);
         }
 
+        // Output number of sinks
         ofs << "number_of_sinks " << originalSinkCount << "\n\n";
 
+        // Output sinks
         for (const auto &p : points)
         {
             if (p.sink)
@@ -461,18 +512,12 @@ public:
                 ofs << "sink " << p.id << " " << p.x << " " << p.y << "\n";
             }
         }
-        // Assuming you want to print Steiner points after sinks
-        for (const auto &p : points)
-        {
-            if (!p.sink)
-            {
-                ofs << "point " << p.id << " " << p.x << " " << p.y << "\n";
-            }
-        }
         ofs << "\n";
 
+        // Output number of blockages
         ofs << "number_of_blockages " << blockages.size() << "\n";
-        ofs << std::fixed << std::setprecision(1);
+
+        // Output blockages
         for (const auto &block : blockages)
         {
             ofs << "blockage " << block.id << " " << block.x1 << " " << block.y1
@@ -480,12 +525,24 @@ public:
         }
         ofs << "\n";
 
+        // Output points (Steiner points)
+        for (const auto &p : points)
+        {
+            if (!p.sink)
+            {
+                ofs << "points " << p.id << " " << p.x << " " << p.y << "\n";
+            }
+        }
+        ofs << "\n";
+
+        // Output edges
         for (const auto &e : mstEdges)
         {
             ofs << "edge " << e.node1 << " " << e.node2 << "\n";
         }
         ofs << "\n";
 
+        // Calculate and output total path length
         double totalLen = 0.0;
         for (const auto &e : mstEdges)
         {
@@ -493,8 +550,8 @@ public:
         }
         ofs << "Path length = " << totalLen << "\n";
         ofs.close();
+        std::cout << "Output written to file: " << outFile << "\n";
     }
-    // The rest of your class methods...
 };
 
 // ================= MAIN =================
@@ -503,7 +560,7 @@ int main()
 {
     try
     {
-        SteinerTree steiner("r31b in.txt");
+        SteinerTree steiner("r62b in.txt");
 
         steiner.printSinks();
         steiner.displayBlockages();
