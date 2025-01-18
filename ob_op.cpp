@@ -168,8 +168,8 @@ private:
             if (doesEdgeIntersectBlock(start, end, block))
             {
                 // Add intermediate points to go around the block
-                Point intermediate1(block.x1 - 0.1, block.y1 - 0.1); // Use geometry to make detours optimal
-                Point intermediate2(block.x2 + 0.1, block.y2 + 0.1);
+                Point intermediate1(block.x1 - 0.2, block.y1 - 0.2); // Use geometry to make detours optimal
+                Point intermediate2(block.x2 + 0.2, block.y2 + 0.2);
                 path.push_back(intermediate1);
                 path.push_back(intermediate2);
                 std::cout << "Adding detour points around block " << block.id << ": ("
@@ -302,6 +302,78 @@ public:
     {
         readInputFile();
         originalSinkCount = numberOfPoints; // store the initial sink count
+    }
+
+    // Post-process and check for violations
+    void postProcessAndCheckForViolations(std::vector<Edge> &mstEdges)
+    {
+        std::cout << "Starting post-processing to check for violations...\n";
+
+        // Check all points against blockages
+        for (const auto &point : points)
+        {
+            for (const auto &block : blockages)
+            {
+                if (point.x >= block.x1 && point.x <= block.x2 && point.y >= block.y1 && point.y <= block.y2)
+                {
+                    std::cout << "Violation: Point (" << point.x << ", " << point.y << ") overlaps with blockage ID " << block.id << "\n";
+                    // Trigger recalculation
+                    std::cout << "Recalculating obstacle-avoiding spanning graph and MST...\n";
+                    auto oasgEdges = obstacleAvoidingSpanningGraph(points, blockages);
+                    mstEdges = computePrimMST(points);
+                    return; // Exit after recalculation
+                }
+            }
+        }
+
+        // Check all edges against blockages
+        for (const auto &e : mstEdges)
+        {
+            const Point *p1 = findPointByID(e.node1);
+            const Point *p2 = findPointByID(e.node2);
+            if (p1 && p2)
+            {
+                std::pair<double, double> start = {p1->x, p1->y};
+                std::pair<double, double> end = {p2->x, p2->y};
+
+                for (const auto &block : blockages)
+                {
+                    if (doesEdgeIntersectBlock(start, end, block))
+                    {
+                        std::cout << "Violation: Edge from (" << start.first << ", " << start.second << ") to ("
+                                  << end.first << ", " << end.second << ") intersects with blockage ID " << block.id << "\n";
+                        // Trigger recalculation
+                        std::cout << "Recalculating obstacle-avoiding spanning graph and MST...\n";
+                        auto oasgEdges = obstacleAvoidingSpanningGraph(points, blockages);
+                        mstEdges = computePrimMST(points);
+                        return; // Exit after recalculation
+                    }
+                }
+            }
+        }
+
+        // Check if all points are connected
+        std::unordered_set<int> connectedPoints;
+        for (const auto &e : mstEdges)
+        {
+            connectedPoints.insert(e.node1);
+            connectedPoints.insert(e.node2);
+        }
+
+        for (const auto &point : points)
+        {
+            if (connectedPoints.find(point.id) == connectedPoints.end())
+            {
+                std::cout << "Violation: Point ID " << point.id << " is not connected to any edges.\n";
+                // Trigger recalculation
+                std::cout << "Recalculating obstacle-avoiding spanning graph and MST...\n";
+                auto oasgEdges = obstacleAvoidingSpanningGraph(points, blockages);
+                mstEdges = computePrimMST(points);
+                return; // Exit after recalculation
+            }
+        }
+
+        std::cout << "Post-processing completed. No violations found.\n";
     }
 
     // Read input file
@@ -568,6 +640,9 @@ int main()
         auto mstEdges = steiner.obstacleAvoidingRectilinearSteinerTree();
         mstEdges = steiner.addSteinerPointsToMST(mstEdges);
         mstEdges = steiner.postProcess(mstEdges);
+
+        // Call the new post-processing function
+        steiner.postProcessAndCheckForViolations(mstEdges);
 
         steiner.writeOutputToFile("steiner_tree_output.txt", mstEdges);
         std::cout << "Output written to file: steiner_tree_output.txt\n";
