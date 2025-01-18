@@ -206,6 +206,13 @@ private:
                     // Compute obstacle-avoiding path
                     std::vector<Point> path = findPathAroundBlockage(start, end, blockages);
                     double pathLength = 0;
+
+                    // Add points in the path to the main points vector
+                    for (const auto &p : path)
+                    {
+                        addUniqueSteinerPoint(p); // Ensure no duplicates are added
+                    }
+
                     for (size_t k = 1; k < path.size(); ++k)
                     {
                         pathLength += mhDistance(path[k - 1], path[k]);
