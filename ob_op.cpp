@@ -10,6 +10,9 @@
 #include <set>
 #include <limits>
 #include <iomanip>
+#include <thread>
+#include <mutex>
+#include <future>
 
 // A struct to represent a point (sink or Steiner)
 struct Point
@@ -51,6 +54,7 @@ private:
     int numberOfPoints;
     int originalSinkCount;
     int numberOfBlocks;
+    std::mutex mtx; // Mutex for thread safety
 
     // Helper function: Check if two line segments intersect
     bool doLinesIntersect(const std::pair<double, double> &p1, const std::pair<double, double> &q1,
@@ -326,9 +330,12 @@ public:
             }
         }
 
-        // Check all edges against blockages
+        // Check all edges against blockages in parallel
+        std::vector<std::future<void>> futures;
         for (const auto &e : mstEdges)
         {
+            futures.push_back(std::async(std::launch::async, [this, e, &mstEdges]()
+                                         {
             const Point *p1 = findPointByID(e.node1);
             const Point *p2 = findPointByID(e.node2);
             if (p1 && p2)
@@ -340,6 +347,7 @@ public:
                 {
                     if (doesEdgeIntersectBlock(start, end, block))
                     {
+                        std::lock_guard<std::mutex> lock(mtx);
                         std::cout << "Violation: Edge from (" << start.first << ", " << start.second << ") to ("
                                   << end.first << ", " << end.second << ") intersects with blockage ID " << block.id << "\n";
                         // Trigger recalculation
@@ -349,7 +357,13 @@ public:
                         return; // Exit after recalculation
                     }
                 }
-            }
+            } }));
+        }
+
+        // Wait for all futures to complete
+        for (auto &fut : futures)
+        {
+            fut.get();
         }
 
         // Check if all points are connected
@@ -632,7 +646,7 @@ int main()
 {
     try
     {
-        SteinerTree steiner("r62b in.txt");
+        SteinerTree steiner("100 in.txt");
 
         steiner.printSinks();
         steiner.displayBlockages();
